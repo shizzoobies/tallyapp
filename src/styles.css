@@ -105,3 +105,8 @@ button.link {
 .badge-medium { background: #fef3c7; color: #92400e; }
 .badge-high { background: #dcfce7; color: #166534; }
 .est-items { margin-top: 12px; }
+
+/* Barcode scanner */
+.scanner { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #000; border-radius: 12px; overflow: hidden; }
+.scanner video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scanner-line { position: absolute; left: 8%; right: 8%; top: 50%; height: 2px; background: rgba(220, 38, 38, 0.9); box-shadow: 0 0 8px rgba(220, 38, 38, 0.8); }

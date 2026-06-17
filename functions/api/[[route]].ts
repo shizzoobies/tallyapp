@@ -607,4 +607,39 @@ app.post('/estimate', requireAuth, async (c) => {
   return c.json(parsed)
 })
 
+// ---------- barcode lookup (Open Food Facts) ----------
+
+app.get('/barcode/:code', requireAuth, async (c) => {
+  const code = c.req.param('code')
+  if (!/^\d{6,14}$/.test(code)) return c.json({ found: false, error: 'invalid barcode' }, 400)
+
+  let d: any
+  try {
+    const r = await fetch(`https://world.openfoodfacts.org/api/v2/product/${code}.json`, {
+      headers: { 'User-Agent': 'Tally/1.0 (https://tally-6dz.pages.dev)' },
+    })
+    if (!r.ok) return c.json({ found: false }, 404)
+    d = await r.json()
+  } catch {
+    return c.json({ found: false }, 404)
+  }
+  if (!d || d.status !== 1 || !d.product) return c.json({ found: false }, 404)
+
+  const p = d.product
+  const n = p.nutriments ?? {}
+  // Open Food Facts gives per-100g and sometimes per-serving. Prefer per-serving.
+  const perServing = n['energy-kcal_serving'] != null
+  return c.json({
+    found: true,
+    name: p.product_name || p.generic_name || 'Unknown product',
+    barcode: code,
+    basis: perServing ? 'serving' : '100g',
+    serving_text: p.serving_size ?? null,
+    calories: perServing ? n['energy-kcal_serving'] : (n['energy-kcal_100g'] ?? null),
+    protein_g: perServing ? (n.proteins_serving ?? null) : (n.proteins_100g ?? null),
+    carbs_g: perServing ? (n.carbohydrates_serving ?? null) : (n.carbohydrates_100g ?? null),
+    fat_g: perServing ? (n.fat_serving ?? null) : (n.fat_100g ?? null),
+  })
+})
+
 export const onRequest = handle(app)

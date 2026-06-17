@@ -59,6 +59,18 @@ export type Day = {
   setup_complete: boolean
 }
 
+export type BarcodeResult = {
+  found: boolean
+  name?: string
+  barcode?: string
+  basis?: 'serving' | '100g'
+  serving_text?: string | null
+  calories?: number | null
+  protein_g?: number | null
+  carbs_g?: number | null
+  fat_g?: number | null
+}
+
 async function jsonOrThrow(r: Response): Promise<unknown> {
   const data: unknown = await r.json().catch(() => ({}))
   if (!r.ok) {
@@ -107,6 +119,12 @@ export const api = {
   },
   estimate: (payload: { photo_key: string; restaurant?: string; description?: string }) =>
     postJson('/api/estimate', payload) as Promise<Estimate>,
+
+  async lookupBarcode(code: string): Promise<BarcodeResult> {
+    const r = await fetch(`/api/barcode/${encodeURIComponent(code)}`)
+    if (r.status === 404) return { found: false }
+    return (await jsonOrThrow(r)) as BarcodeResult
+  },
 }
 
 // Local calendar date as YYYY-MM-DD. The client owns "today" so an evening log

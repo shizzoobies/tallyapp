@@ -7,6 +7,7 @@ import AddFood from './AddFood'
 import AddExercise from './AddExercise'
 import LogWeight from './LogWeight'
 import SnapMeal from './SnapMeal'
+import ScanFood from './ScanFood'
 
 const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack']
 
@@ -23,7 +24,7 @@ export default function Today({
 }) {
   const [date, setDate] = useState(todayISO())
   const [day, setDay] = useState<Day | null>(null)
-  const [sheet, setSheet] = useState<null | 'snap' | 'food' | 'exercise' | 'weight'>(null)
+  const [sheet, setSheet] = useState<null | 'snap' | 'scan' | 'food' | 'exercise' | 'weight'>(null)
   const [busy, setBusy] = useState(false)
 
   const loadDay = useCallback(async () => {
@@ -120,9 +121,12 @@ export default function Today({
         </div>
       </div>
 
-      <button className="snap-btn" onClick={() => setSheet('snap')}>
-        Snap a meal
-      </button>
+      <div className="actions">
+        <button onClick={() => setSheet('snap')}>Snap a meal</button>
+        <button className="secondary" onClick={() => setSheet('scan')}>
+          Scan barcode
+        </button>
+      </div>
       <div className="actions">
         <button className="secondary" onClick={() => setSheet('food')}>
           + Add food
@@ -186,6 +190,7 @@ export default function Today({
       </div>
 
       {sheet === 'snap' && <SnapMeal date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
+      {sheet === 'scan' && <ScanFood date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
       {sheet === 'food' && <AddFood date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
       {sheet === 'exercise' && (
         <AddExercise
