@@ -1,0 +1,17 @@
+name = "tally"
+compatibility_date = "2026-06-17"
+compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tally"
+database_id = "REPLACE_AFTER_wrangler_d1_create"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "tally-photos"
+
+# ANTHROPIC_API_KEY is a secret, not set here.
+# Local:      put it in .dev.vars
+# Production: npx wrangler pages secret put ANTHROPIC_API_KEY
