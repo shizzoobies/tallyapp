@@ -1,20 +1,44 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { api, type Me } from './api'
+import Auth from './screens/Auth'
+import Setup from './screens/Setup'
+import Home from './screens/Home'
 
-// Phase 0 placeholder screen. It pings /api/me to confirm the Functions API is wired up.
+type View = 'loading' | 'auth' | 'setup' | 'home'
+
 export default function App() {
-  const [status, setStatus] = useState('checking the API...')
+  const [view, setView] = useState<View>('loading')
+  const [me, setMe] = useState<Me | null>(null)
 
-  useEffect(() => {
-    fetch('/api/me')
-      .then((r) => setStatus(`/api/me responded ${r.status}`))
-      .catch(() => setStatus('/api/me is unreachable'))
+  // Single source of truth: ask the server who we are, then route.
+  const load = useCallback(async () => {
+    const m = await api.me().catch(() => null)
+    if (!m) {
+      setMe(null)
+      setView('auth')
+      return
+    }
+    setMe(m)
+    setView(m.setup_complete ? 'home' : 'setup')
   }, [])
 
-  return (
-    <main style={{ fontFamily: 'system-ui, sans-serif', padding: 24, maxWidth: 480 }}>
-      <h1>Tally</h1>
-      <p>Phase 0 scaffold is live.</p>
-      <p style={{ color: '#666' }}>{status}</p>
-    </main>
-  )
+  useEffect(() => {
+    load()
+  }, [load])
+
+  if (view === 'loading') {
+    return (
+      <div className="wrap">
+        <div className="card">
+          <p className="muted">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+  if (view === 'auth') return <Auth onAuthed={load} />
+  if (view === 'setup' && me) return <Setup me={me} onDone={load} />
+  if (view === 'home' && me) {
+    return <Home me={me} onEdit={() => setView('setup')} onLogout={load} />
+  }
+  return null
 }

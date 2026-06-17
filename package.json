@@ -9,6 +9,7 @@
     "build:watch": "vite build --watch",
     "preview": "wrangler pages dev dist --live-reload --port 8788",
     "dev": "npm run build && concurrently -k -n vite,cf \"npm:build:watch\" \"npm:preview\"",
+    "test": "vitest run",
     "db:local": "wrangler d1 execute tally --file schema.sql --local",
     "db:remote": "wrangler d1 execute tally --file schema.sql --remote"
   },
@@ -25,6 +26,7 @@
     "concurrently": "^9.1.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
+    "vitest": "^2.1.8",
     "wrangler": "^4.0.0"
   }
 }

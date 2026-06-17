@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS weight_logs (
   weight_kg  REAL NOT NULL,
   created_at TEXT DEFAULT (datetime('now'))
 );
-CREATE INDEX IF NOT EXISTS idx_weight_user_date ON weight_logs(user_id, log_date);
+-- One weight per user per day. UNIQUE so POST /api/weight upserts via ON CONFLICT.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_weight_user_date ON weight_logs(user_id, log_date);
 
 CREATE TABLE IF NOT EXISTS food_logs (
   id           TEXT PRIMARY KEY,
