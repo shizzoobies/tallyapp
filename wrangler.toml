@@ -6,7 +6,7 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "tally"
-database_id = "REPLACE_AFTER_wrangler_d1_create"
+database_id = "fb280ff2-0198-4cb3-95b9-0c168847dfbf"
 
 [[r2_buckets]]
 binding = "BUCKET"
