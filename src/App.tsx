@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type Me } from './api'
 import Auth from './screens/Auth'
 import Setup from './screens/Setup'
-import Home from './screens/Home'
+import Today from './screens/Today'
 
 type View = 'loading' | 'auth' | 'setup' | 'home'
 
@@ -38,7 +38,7 @@ export default function App() {
   if (view === 'auth') return <Auth onAuthed={load} />
   if (view === 'setup' && me) return <Setup me={me} onDone={load} />
   if (view === 'home' && me) {
-    return <Home me={me} onEdit={() => setView('setup')} onLogout={load} />
+    return <Today me={me} onEdit={() => setView('setup')} onLogout={load} onMeChanged={load} />
   }
   return null
 }

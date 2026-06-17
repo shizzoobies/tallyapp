@@ -19,6 +19,44 @@ export type Me = {
   daily_target: number | null
 }
 
+export type FoodLog = {
+  id: string
+  meal: string | null
+  name: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  source: string
+  restaurant: string | null
+  barcode: string | null
+  photo_key: string | null
+  created_at: string
+}
+
+export type ExerciseLog = {
+  id: string
+  activity_key: string
+  duration_min: number
+  calories_burned: number
+  created_at: string
+}
+
+export type Day = {
+  date: string
+  weight_kg: number | null
+  latest_weight_kg: number | null
+  foods: FoodLog[]
+  exercises: ExerciseLog[]
+  target: number | null
+  tdee: number | null
+  consumed: number
+  burned: number
+  remaining: number | null
+  exercise_credit_pct: number
+  setup_complete: boolean
+}
+
 async function jsonOrThrow(r: Response): Promise<unknown> {
   const data: unknown = await r.json().catch(() => ({}))
   if (!r.ok) {
@@ -29,6 +67,8 @@ async function jsonOrThrow(r: Response): Promise<unknown> {
 }
 
 const jsonHeaders = { 'content-type': 'application/json' }
+const postJson = (path: string, body: unknown) =>
+  fetch(path, { method: 'POST', headers: jsonHeaders, body: JSON.stringify(body) }).then(jsonOrThrow)
 
 export const api = {
   async me(): Promise<Me | null> {
@@ -36,45 +76,43 @@ export const api = {
     if (r.status === 401) return null
     return (await jsonOrThrow(r)) as Me
   },
-  register(email: string, password: string) {
-    return fetch('/api/auth/register', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email, password }),
-    }).then(jsonOrThrow)
+  register: (email: string, password: string) => postJson('/api/auth/register', { email, password }),
+  login: (email: string, password: string) => postJson('/api/auth/login', { email, password }),
+  logout: () => fetch('/api/auth/logout', { method: 'POST' }).then(jsonOrThrow),
+  patchMe: (fields: Record<string, unknown>) =>
+    fetch('/api/me', { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify(fields) }).then(jsonOrThrow),
+
+  postWeight: (date: string, weight_kg: number) => postJson('/api/weight', { date, weight_kg }),
+
+  async getDay(date: string): Promise<Day> {
+    return (await jsonOrThrow(await fetch(`/api/day/${date}`))) as Day
   },
-  login(email: string, password: string) {
-    return fetch('/api/auth/login', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ email, password }),
-    }).then(jsonOrThrow)
-  },
-  logout() {
-    return fetch('/api/auth/logout', { method: 'POST' }).then(jsonOrThrow)
-  },
-  patchMe(fields: Record<string, unknown>) {
-    return fetch('/api/me', {
-      method: 'PATCH',
-      headers: jsonHeaders,
-      body: JSON.stringify(fields),
-    }).then(jsonOrThrow)
-  },
-  postWeight(date: string, weight_kg: number) {
-    return fetch('/api/weight', {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ date, weight_kg }),
-    }).then(jsonOrThrow)
-  },
+  postFood: (payload: Record<string, unknown>) => postJson('/api/food', payload),
+  patchFood: (id: string, fields: Record<string, unknown>) =>
+    fetch(`/api/food/${id}`, { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify(fields) }).then(jsonOrThrow),
+  deleteFood: (id: string) => fetch(`/api/food/${id}`, { method: 'DELETE' }).then(jsonOrThrow),
+
+  postExercise: (date: string, activity_key: string, duration_min: number) =>
+    postJson('/api/exercise', { date, activity_key, duration_min }),
+  deleteExercise: (id: string) => fetch(`/api/exercise/${id}`, { method: 'DELETE' }).then(jsonOrThrow),
 }
 
 // Local calendar date as YYYY-MM-DD. The client owns "today" so an evening log
 // does not slip into the next UTC day (no user timezone is stored server-side).
 export function todayISO(): string {
-  const d = new Date()
+  return formatDate(new Date())
+}
+
+export function formatDate(d: Date): string {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
+}
+
+// Shift an ISO date by whole days, staying on calendar dates (noon avoids DST edges).
+export function shiftDate(iso: string, days: number): string {
+  const d = new Date(`${iso}T12:00:00`)
+  d.setDate(d.getDate() + days)
+  return formatDate(d)
 }

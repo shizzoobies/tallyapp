@@ -69,3 +69,30 @@ button.link {
 .target { font-size: 3.2rem; font-weight: 800; color: var(--accent); margin: 6px 0 14px; line-height: 1; }
 .stat { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .center { text-align: center; }
+
+/* Today screen */
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ring { width: 200px; height: 200px; display: block; margin: 4px auto 8px; }
+.ring-num { font-size: 44px; font-weight: 800; fill: var(--ink); }
+.ring-label { font-size: 13px; fill: var(--muted); }
+.ring-stats { display: flex; justify-content: space-around; margin-top: 4px; }
+.ring-stats .stat-val { font-size: 1.25rem; font-weight: 700; }
+.actions { display: flex; gap: 10px; margin: 16px 0; }
+.actions button { margin-top: 0; }
+.section { font-size: 1rem; margin: 0 0 6px; }
+.meal-head { font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin: 12px 0 2px; }
+.item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.item-name { flex: 1; padding-right: 10px; }
+.item-right { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.link.danger { color: var(--danger); }
+.card + .card { margin-top: 14px; }
+
+/* bottom sheet */
+.sheet-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.35); display: flex; align-items: flex-end; justify-content: center; z-index: 50; }
+.sheet { background: #fff; width: 100%; max-width: 480px; border-radius: 16px 16px 0 0; padding: 20px; max-height: 90vh; overflow-y: auto; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; }
+.sheet-head h2 { font-size: 1.2rem; margin: 0; }
+@media (min-width: 540px) {
+  .sheet-overlay { align-items: center; }
+  .sheet { border-radius: 16px; margin-bottom: 20px; }
+}

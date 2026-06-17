@@ -2,7 +2,17 @@ import { Hono } from 'hono'
 import { handle } from 'hono/cloudflare-pages'
 import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import type { Context, MiddlewareHandler } from 'hono'
-import { ACTIVITY, ageOn, bmr, dailyTarget, tdee, type ActivityKey } from '../../src/lib/calc'
+import {
+  ACTIVITY,
+  ageOn,
+  bmr,
+  dailyTarget,
+  exerciseKcal,
+  remaining,
+  tdee,
+  type ActivityKey,
+} from '../../src/lib/calc'
+import { MET_BY_KEY } from '../../src/lib/mets'
 
 type Bindings = {
   DB: D1Database
@@ -16,6 +26,8 @@ type AppContext = Context<Env>
 const SESSION_COOKIE = 'tally_session'
 const SESSION_DAYS = 30
 const PBKDF2_ITERATIONS = 100_000
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const MEALS = ['breakfast', 'lunch', 'dinner', 'snack']
 
 const app = new Hono<Env>().basePath('/api')
 
@@ -71,6 +83,11 @@ function isHttps(c: AppContext): boolean {
   return new URL(c.req.url).protocol === 'https:'
 }
 
+function nonNegNum(x: unknown): number {
+  const n = Number(x)
+  return Number.isFinite(n) && n >= 0 ? n : 0
+}
+
 async function createSession(c: AppContext, userId: string): Promise<void> {
   const token = randomToken()
   const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString()
@@ -99,6 +116,65 @@ const requireAuth: MiddlewareHandler<Env> = async (c, next) => {
   }
   c.set('userId', s.user_id)
   await next()
+}
+
+// ---------- shared profile + target ----------
+
+type UserRow = {
+  id: string
+  email: string
+  sex: 'male' | 'female' | null
+  height_cm: number | null
+  birthdate: string | null
+  activity: string
+  goal_weight_kg: number | null
+  goal_rate_kg_per_week: number | null
+  exercise_credit_pct: number
+  units: 'metric' | 'imperial'
+  created_at: string
+}
+
+function loadUser(c: AppContext, uid: string): Promise<UserRow | null> {
+  return c.env.DB.prepare(
+    `SELECT id, email, sex, height_cm, birthdate, activity, goal_weight_kg,
+            goal_rate_kg_per_week, exercise_credit_pct, units, created_at
+     FROM users WHERE id = ?`,
+  )
+    .bind(uid)
+    .first<UserRow>()
+}
+
+async function latestWeightKg(c: AppContext, uid: string): Promise<number | null> {
+  const w = await c.env.DB.prepare(
+    'SELECT weight_kg FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1',
+  )
+    .bind(uid)
+    .first<{ weight_kg: number }>()
+  return w?.weight_kg ?? null
+}
+
+// Single definition of "the target" so /api/me and /api/day never disagree.
+function computeTarget(u: UserRow, weightKg: number | null) {
+  const profileComplete =
+    !!u.sex &&
+    u.height_cm != null &&
+    !!u.birthdate &&
+    u.activity in ACTIVITY &&
+    u.goal_rate_kg_per_week != null
+  const setupComplete = profileComplete && weightKg != null
+  let age: number | null = null
+  let tdeeVal: number | null = null
+  let target: number | null = null
+  if (setupComplete) {
+    age = ageOn(u.birthdate as string, new Date())
+    const tdeeExact = tdee(
+      bmr(u.sex as 'male' | 'female', weightKg as number, u.height_cm as number, age),
+      u.activity as ActivityKey,
+    )
+    tdeeVal = Math.round(tdeeExact)
+    target = dailyTarget(tdeeExact, u.goal_rate_kg_per_week as number, u.sex as 'male' | 'female')
+  }
+  return { age, tdee: tdeeVal, target, setupComplete }
 }
 
 // ---------- auth ----------
@@ -146,68 +222,21 @@ app.post('/auth/logout', async (c) => {
   return c.json({ ok: true })
 })
 
-// ---------- profile + computed target ----------
-
-type UserRow = {
-  id: string
-  email: string
-  sex: 'male' | 'female' | null
-  height_cm: number | null
-  birthdate: string | null
-  activity: string
-  goal_weight_kg: number | null
-  goal_rate_kg_per_week: number | null
-  exercise_credit_pct: number
-  units: 'metric' | 'imperial'
-  created_at: string
-}
+// ---------- profile ----------
 
 app.get('/me', requireAuth, async (c) => {
   const uid = c.get('userId')
-  const u = await c.env.DB.prepare(
-    `SELECT id, email, sex, height_cm, birthdate, activity, goal_weight_kg,
-            goal_rate_kg_per_week, exercise_credit_pct, units, created_at
-     FROM users WHERE id = ?`,
-  )
-    .bind(uid)
-    .first<UserRow>()
+  const u = await loadUser(c, uid)
   if (!u) return c.json({ error: 'unauthenticated' }, 401)
-
-  const w = await c.env.DB.prepare(
-    'SELECT weight_kg FROM weight_logs WHERE user_id = ? ORDER BY log_date DESC LIMIT 1',
-  )
-    .bind(uid)
-    .first<{ weight_kg: number }>()
-  const latestWeightKg = w?.weight_kg ?? null
-
-  const profileComplete =
-    !!u.sex &&
-    u.height_cm != null &&
-    !!u.birthdate &&
-    u.activity in ACTIVITY &&
-    u.goal_rate_kg_per_week != null
-  const setupComplete = profileComplete && latestWeightKg != null
-
-  let age: number | null = null
-  let tdeeVal: number | null = null
-  let target: number | null = null
-  if (setupComplete) {
-    age = ageOn(u.birthdate as string, new Date())
-    const tdeeExact = tdee(
-      bmr(u.sex as 'male' | 'female', latestWeightKg as number, u.height_cm as number, age),
-      u.activity as ActivityKey,
-    )
-    tdeeVal = Math.round(tdeeExact)
-    target = dailyTarget(tdeeExact, u.goal_rate_kg_per_week as number, u.sex as 'male' | 'female')
-  }
-
+  const lw = await latestWeightKg(c, uid)
+  const comp = computeTarget(u, lw)
   return c.json({
     ...u,
-    latest_weight_kg: latestWeightKg,
-    age,
-    setup_complete: setupComplete,
-    tdee: tdeeVal,
-    daily_target: target,
+    latest_weight_kg: lw,
+    age: comp.age,
+    setup_complete: comp.setupComplete,
+    tdee: comp.tdee,
+    daily_target: comp.target,
   })
 })
 
@@ -227,7 +256,7 @@ app.patch('/me', requireAuth, async (c) => {
     sets.push('height_cm = ?'), vals.push(h)
   }
   if (body.birthdate !== undefined) {
-    if (typeof body.birthdate !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(body.birthdate))
+    if (typeof body.birthdate !== 'string' || !DATE_RE.test(body.birthdate))
       return c.json({ error: 'birthdate must be YYYY-MM-DD' }, 400)
     sets.push('birthdate = ?'), vals.push(body.birthdate)
   }
@@ -263,15 +292,14 @@ app.patch('/me', requireAuth, async (c) => {
   return c.json({ ok: true })
 })
 
-// ---------- weight (minimal: setup seeds the weight that BMR needs) ----------
+// ---------- weight ----------
 
 app.post('/weight', requireAuth, async (c) => {
   const uid = c.get('userId')
   const body = await c.req.json().catch(() => null)
   const date = body?.date
   const kg = Number(body?.weight_kg)
-  if (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))
-    return c.json({ error: 'date must be YYYY-MM-DD' }, 400)
+  if (typeof date !== 'string' || !DATE_RE.test(date)) return c.json({ error: 'date must be YYYY-MM-DD' }, 400)
   if (!(kg > 0 && kg < 700)) return c.json({ error: 'weight_kg out of range' }, 400)
   await c.env.DB.prepare(
     `INSERT INTO weight_logs (id, user_id, log_date, weight_kg) VALUES (?, ?, ?, ?)
@@ -279,6 +307,201 @@ app.post('/weight', requireAuth, async (c) => {
   )
     .bind(crypto.randomUUID(), uid, date, kg)
     .run()
+  return c.json({ ok: true })
+})
+
+// ---------- day aggregate ----------
+
+type FoodRow = {
+  id: string
+  meal: string | null
+  name: string
+  calories: number
+  protein_g: number
+  carbs_g: number
+  fat_g: number
+  source: string
+  restaurant: string | null
+  barcode: string | null
+  photo_key: string | null
+  created_at: string
+}
+type ExRow = {
+  id: string
+  activity_key: string
+  duration_min: number
+  calories_burned: number
+  created_at: string
+}
+
+app.get('/day/:date', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const date = c.req.param('date')
+  if (!DATE_RE.test(date)) return c.json({ error: 'date must be YYYY-MM-DD' }, 400)
+  const u = await loadUser(c, uid)
+  if (!u) return c.json({ error: 'unauthenticated' }, 401)
+
+  const lw = await latestWeightKg(c, uid)
+  const comp = computeTarget(u, lw)
+
+  const dayW = await c.env.DB.prepare(
+    'SELECT weight_kg FROM weight_logs WHERE user_id = ? AND log_date = ?',
+  )
+    .bind(uid, date)
+    .first<{ weight_kg: number }>()
+
+  const foods = (
+    await c.env.DB.prepare(
+      `SELECT id, meal, name, calories, protein_g, carbs_g, fat_g, source, restaurant, barcode, photo_key, created_at
+       FROM food_logs WHERE user_id = ? AND log_date = ? ORDER BY created_at`,
+    )
+      .bind(uid, date)
+      .all<FoodRow>()
+  ).results
+  const exercises = (
+    await c.env.DB.prepare(
+      `SELECT id, activity_key, duration_min, calories_burned, created_at
+       FROM exercise_logs WHERE user_id = ? AND log_date = ? ORDER BY created_at`,
+    )
+      .bind(uid, date)
+      .all<ExRow>()
+  ).results
+
+  const consumed = Math.round(foods.reduce((s, f) => s + f.calories, 0))
+  const burned = exercises.reduce((s, e) => s + e.calories_burned, 0)
+  const rem =
+    comp.target != null ? remaining(comp.target, consumed, burned, u.exercise_credit_pct) : null
+
+  return c.json({
+    date,
+    weight_kg: dayW?.weight_kg ?? null,
+    latest_weight_kg: lw,
+    foods,
+    exercises,
+    target: comp.target,
+    tdee: comp.tdee,
+    consumed,
+    burned,
+    remaining: rem,
+    exercise_credit_pct: u.exercise_credit_pct,
+    setup_complete: comp.setupComplete,
+  })
+})
+
+// ---------- food ----------
+
+app.post('/food', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const b = await c.req.json().catch(() => null)
+  const date = b?.date
+  const name = String(b?.name ?? '').trim()
+  const calories = Number(b?.calories)
+  if (typeof date !== 'string' || !DATE_RE.test(date)) return c.json({ error: 'date must be YYYY-MM-DD' }, 400)
+  if (!name) return c.json({ error: 'name is required' }, 400)
+  // Never store a null or negative calorie value.
+  if (!Number.isFinite(calories) || calories < 0) return c.json({ error: 'calories must be a number >= 0' }, 400)
+
+  const meal = MEALS.includes(b?.meal) ? b.meal : 'snack'
+  const source = ['manual', 'ai', 'db'].includes(b?.source) ? b.source : 'manual'
+  const id = crypto.randomUUID()
+  await c.env.DB.prepare(
+    `INSERT INTO food_logs
+       (id, user_id, log_date, meal, name, calories, protein_g, carbs_g, fat_g, source, restaurant, barcode, photo_key, ai_raw_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      id,
+      uid,
+      date,
+      meal,
+      name,
+      Math.round(calories),
+      nonNegNum(b?.protein_g),
+      nonNegNum(b?.carbs_g),
+      nonNegNum(b?.fat_g),
+      source,
+      b?.restaurant ?? null,
+      b?.barcode ?? null,
+      b?.photo_key ?? null,
+      b?.ai_raw_json ?? null,
+    )
+    .run()
+  return c.json({ ok: true, id }, 201)
+})
+
+app.patch('/food/:id', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const id = c.req.param('id')
+  const b = (await c.req.json().catch(() => ({}))) as Record<string, unknown>
+  const sets: string[] = []
+  const vals: unknown[] = []
+  if (b.name !== undefined) {
+    const n = String(b.name).trim()
+    if (!n) return c.json({ error: 'name is required' }, 400)
+    sets.push('name = ?'), vals.push(n)
+  }
+  if (b.calories !== undefined) {
+    const cc = Number(b.calories)
+    if (!Number.isFinite(cc) || cc < 0) return c.json({ error: 'calories must be a number >= 0' }, 400)
+    sets.push('calories = ?'), vals.push(Math.round(cc))
+  }
+  if (b.meal !== undefined) {
+    if (typeof b.meal !== 'string' || !MEALS.includes(b.meal)) return c.json({ error: 'invalid meal' }, 400)
+    sets.push('meal = ?'), vals.push(b.meal)
+  }
+  if (b.protein_g !== undefined) sets.push('protein_g = ?'), vals.push(nonNegNum(b.protein_g))
+  if (b.carbs_g !== undefined) sets.push('carbs_g = ?'), vals.push(nonNegNum(b.carbs_g))
+  if (b.fat_g !== undefined) sets.push('fat_g = ?'), vals.push(nonNegNum(b.fat_g))
+  if (sets.length === 0) return c.json({ error: 'no valid fields to update' }, 400)
+  vals.push(id, uid)
+  const r = await c.env.DB.prepare(`UPDATE food_logs SET ${sets.join(', ')} WHERE id = ? AND user_id = ?`)
+    .bind(...vals)
+    .run()
+  if ((r.meta.changes ?? 0) === 0) return c.json({ error: 'not found' }, 404)
+  return c.json({ ok: true })
+})
+
+app.delete('/food/:id', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const id = c.req.param('id')
+  const r = await c.env.DB.prepare('DELETE FROM food_logs WHERE id = ? AND user_id = ?')
+    .bind(id, uid)
+    .run()
+  if ((r.meta.changes ?? 0) === 0) return c.json({ error: 'not found' }, 404)
+  return c.json({ ok: true })
+})
+
+// ---------- exercise (burn computed server-side from latest weight) ----------
+
+app.post('/exercise', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const b = await c.req.json().catch(() => null)
+  const date = b?.date
+  const key = b?.activity_key
+  const dur = Number(b?.duration_min)
+  if (typeof date !== 'string' || !DATE_RE.test(date)) return c.json({ error: 'date must be YYYY-MM-DD' }, 400)
+  if (typeof key !== 'string' || !(key in MET_BY_KEY)) return c.json({ error: 'unknown activity' }, 400)
+  if (!Number.isFinite(dur) || dur <= 0 || dur > 1440) return c.json({ error: 'duration must be 1 to 1440 minutes' }, 400)
+  const lw = await latestWeightKg(c, uid)
+  if (lw == null) return c.json({ error: 'log your weight first' }, 400)
+
+  const kcal = exerciseKcal(MET_BY_KEY[key], lw, Math.round(dur))
+  const id = crypto.randomUUID()
+  await c.env.DB.prepare(
+    'INSERT INTO exercise_logs (id, user_id, log_date, activity_key, duration_min, calories_burned) VALUES (?, ?, ?, ?, ?, ?)',
+  )
+    .bind(id, uid, date, key, Math.round(dur), kcal)
+    .run()
+  return c.json({ ok: true, id, calories_burned: kcal }, 201)
+})
+
+app.delete('/exercise/:id', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const id = c.req.param('id')
+  const r = await c.env.DB.prepare('DELETE FROM exercise_logs WHERE id = ? AND user_id = ?')
+    .bind(id, uid)
+    .run()
+  if ((r.meta.changes ?? 0) === 0) return c.json({ error: 'not found' }, 404)
   return c.json({ ok: true })
 })
 
