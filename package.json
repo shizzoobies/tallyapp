@@ -10,6 +10,7 @@
     "preview": "wrangler pages dev dist --live-reload --port 8788",
     "dev": "npm run build && concurrently -k -n vite,cf \"npm:build:watch\" \"npm:preview\"",
     "test": "vitest run",
+    "icons": "node scripts/gen-icons.mjs",
     "db:local": "wrangler d1 execute tally --file schema.sql --local",
     "db:remote": "wrangler d1 execute tally --file schema.sql --remote"
   },
@@ -22,12 +23,14 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240101.0",
+    "@resvg/resvg-js": "^2.6.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.0",
     "typescript": "^5.6.3",
     "vite": "^5.4.11",
+    "vite-plugin-pwa": "^0.21.1",
     "vitest": "^2.1.8",
     "wrangler": "^4.0.0"
   }
