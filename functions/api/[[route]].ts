@@ -10,6 +10,7 @@ import {
   exerciseKcal,
   remaining,
   tdee,
+  trendSeries,
   type ActivityKey,
 } from '../../src/lib/calc'
 import { MET_BY_KEY } from '../../src/lib/mets'
@@ -605,6 +606,62 @@ app.post('/estimate', requireAuth, async (c) => {
   const parsed = parseEstimateText(text)
   if (!parsed) return c.json({ error: 'could not parse estimate', raw: text.slice(0, 500) }, 422)
   return c.json(parsed)
+})
+
+// ---------- trends data ----------
+
+app.get('/weights', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const from = c.req.query('from')
+  const to = c.req.query('to')
+  const rows = (
+    await c.env.DB.prepare(
+      'SELECT log_date, weight_kg FROM weight_logs WHERE user_id = ? ORDER BY log_date',
+    )
+      .bind(uid)
+      .all<{ log_date: string; weight_kg: number }>()
+  ).results
+  // Trend is computed over the full history (EWMA depends on prior values), then
+  // the requested window is sliced out.
+  const trend = trendSeries(rows.map((r) => r.weight_kg))
+  let out = rows.map((r, i) => ({
+    date: r.log_date,
+    weight_kg: r.weight_kg,
+    trend_kg: Math.round(trend[i] * 100) / 100,
+  }))
+  if (from) out = out.filter((o) => o.date >= from)
+  if (to) out = out.filter((o) => o.date <= to)
+  return c.json(out)
+})
+
+app.get('/history', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const from = c.req.query('from') ?? ''
+  const to = c.req.query('to') ?? ''
+  if (!DATE_RE.test(from) || !DATE_RE.test(to)) return c.json({ error: 'from and to required (YYYY-MM-DD)' }, 400)
+  const foods = (
+    await c.env.DB.prepare(
+      'SELECT log_date, SUM(calories) AS consumed FROM food_logs WHERE user_id = ? AND log_date BETWEEN ? AND ? GROUP BY log_date',
+    )
+      .bind(uid, from, to)
+      .all<{ log_date: string; consumed: number }>()
+  ).results
+  const ex = (
+    await c.env.DB.prepare(
+      'SELECT log_date, SUM(calories_burned) AS burned FROM exercise_logs WHERE user_id = ? AND log_date BETWEEN ? AND ? GROUP BY log_date',
+    )
+      .bind(uid, from, to)
+      .all<{ log_date: string; burned: number }>()
+  ).results
+  const map: Record<string, { date: string; consumed: number; burned: number }> = {}
+  for (const f of foods) map[f.log_date] = { date: f.log_date, consumed: Math.round(f.consumed), burned: 0 }
+  for (const e of ex) {
+    const row = map[e.log_date] ?? { date: e.log_date, consumed: 0, burned: 0 }
+    row.burned = e.burned
+    map[e.log_date] = row
+  }
+  const out = Object.values(map).sort((a, b) => (a.date < b.date ? -1 : 1))
+  return c.json(out)
 })
 
 // ---------- barcode lookup (Open Food Facts) ----------

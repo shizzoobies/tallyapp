@@ -64,3 +64,34 @@ export function ageOn(birthdateISO: string, on: Date): number {
   if (m < 0 || (m === 0 && on.getDate() < b.getDate())) age -= 1
   return age
 }
+
+// Least-squares slope of y over x (for example, trend kg per day). 0 when undefined.
+export function linregSlope(xs: number[], ys: number[]): number {
+  const n = xs.length
+  if (n < 2) return 0
+  let sx = 0
+  let sy = 0
+  let sxx = 0
+  let sxy = 0
+  for (let i = 0; i < n; i++) {
+    sx += xs[i]
+    sy += ys[i]
+    sxx += xs[i] * xs[i]
+    sxy += xs[i] * ys[i]
+  }
+  const denom = n * sxx - sx * sx
+  return denom === 0 ? 0 : (n * sxy - sx * sy) / denom
+}
+
+// Whole days until a trend at currentTrendKg reaches goalKg at slopeKgPerDay.
+// null when flat or moving away from the goal.
+export function daysToGoal(
+  currentTrendKg: number,
+  goalKg: number,
+  slopeKgPerDay: number,
+): number | null {
+  if (slopeKgPerDay === 0) return null
+  const days = (goalKg - currentTrendKg) / slopeKgPerDay
+  if (!Number.isFinite(days) || days <= 0) return null
+  return Math.round(days)
+}

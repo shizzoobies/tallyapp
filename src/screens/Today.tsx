@@ -16,11 +16,13 @@ export default function Today({
   onEdit,
   onLogout,
   onMeChanged,
+  onTrends,
 }: {
   me: Me
   onEdit: () => void
   onLogout: () => void
   onMeChanged: () => void
+  onTrends: () => void
 }) {
   const [date, setDate] = useState(todayISO())
   const [day, setDay] = useState<Day | null>(null)
@@ -182,6 +184,10 @@ export default function Today({
       <div className="center" style={{ marginTop: 18 }}>
         <button className="link" onClick={onEdit}>
           Profile
+        </button>
+        <span className="muted"> | </span>
+        <button className="link" onClick={onTrends}>
+          Trends
         </button>
         <span className="muted"> | </span>
         <button className="link" onClick={logout} disabled={busy}>

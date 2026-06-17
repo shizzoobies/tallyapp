@@ -71,6 +71,9 @@ export type BarcodeResult = {
   fat_g?: number | null
 }
 
+export type WeightPoint = { date: string; weight_kg: number; trend_kg: number }
+export type HistoryPoint = { date: string; consumed: number; burned: number }
+
 async function jsonOrThrow(r: Response): Promise<unknown> {
   const data: unknown = await r.json().catch(() => ({}))
   if (!r.ok) {
@@ -124,6 +127,17 @@ export const api = {
     const r = await fetch(`/api/barcode/${encodeURIComponent(code)}`)
     if (r.status === 404) return { found: false }
     return (await jsonOrThrow(r)) as BarcodeResult
+  },
+
+  async getWeights(from?: string, to?: string): Promise<WeightPoint[]> {
+    const q = new URLSearchParams()
+    if (from) q.set('from', from)
+    if (to) q.set('to', to)
+    const qs = q.toString()
+    return (await jsonOrThrow(await fetch(`/api/weights${qs ? `?${qs}` : ''}`))) as WeightPoint[]
+  },
+  async getHistory(from: string, to: string): Promise<HistoryPoint[]> {
+    return (await jsonOrThrow(await fetch(`/api/history?from=${from}&to=${to}`))) as HistoryPoint[]
   },
 }
 
