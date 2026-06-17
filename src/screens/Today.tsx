@@ -6,6 +6,7 @@ import CalorieRing from '../components/CalorieRing'
 import AddFood from './AddFood'
 import AddExercise from './AddExercise'
 import LogWeight from './LogWeight'
+import SnapMeal from './SnapMeal'
 
 const MEAL_ORDER = ['breakfast', 'lunch', 'dinner', 'snack']
 
@@ -22,7 +23,7 @@ export default function Today({
 }) {
   const [date, setDate] = useState(todayISO())
   const [day, setDay] = useState<Day | null>(null)
-  const [sheet, setSheet] = useState<null | 'food' | 'exercise' | 'weight'>(null)
+  const [sheet, setSheet] = useState<null | 'snap' | 'food' | 'exercise' | 'weight'>(null)
   const [busy, setBusy] = useState(false)
 
   const loadDay = useCallback(async () => {
@@ -119,8 +120,13 @@ export default function Today({
         </div>
       </div>
 
+      <button className="snap-btn" onClick={() => setSheet('snap')}>
+        Snap a meal
+      </button>
       <div className="actions">
-        <button onClick={() => setSheet('food')}>+ Add food</button>
+        <button className="secondary" onClick={() => setSheet('food')}>
+          + Add food
+        </button>
         <button className="secondary" onClick={() => setSheet('exercise')}>
           + Add exercise
         </button>
@@ -179,6 +185,7 @@ export default function Today({
         </button>
       </div>
 
+      {sheet === 'snap' && <SnapMeal date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
       {sheet === 'food' && <AddFood date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
       {sheet === 'exercise' && (
         <AddExercise

@@ -1,6 +1,8 @@
 // Thin client for the Pages Functions API. Cookies are same-origin, so the
 // HttpOnly session cookie rides along automatically.
 
+import type { Estimate } from './lib/estimate'
+
 export type Me = {
   id: string
   email: string
@@ -95,6 +97,16 @@ export const api = {
   postExercise: (date: string, activity_key: string, duration_min: number) =>
     postJson('/api/exercise', { date, activity_key, duration_min }),
   deleteExercise: (id: string) => fetch(`/api/exercise/${id}`, { method: 'DELETE' }).then(jsonOrThrow),
+
+  async uploadPhoto(blob: Blob): Promise<{ photo_key: string }> {
+    const fd = new FormData()
+    fd.append('file', blob, 'meal.jpg')
+    return (await jsonOrThrow(await fetch('/api/photo/upload', { method: 'POST', body: fd }))) as {
+      photo_key: string
+    }
+  },
+  estimate: (payload: { photo_key: string; restaurant?: string; description?: string }) =>
+    postJson('/api/estimate', payload) as Promise<Estimate>,
 }
 
 // Local calendar date as YYYY-MM-DD. The client owns "today" so an evening log

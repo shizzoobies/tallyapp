@@ -13,6 +13,7 @@ import {
   type ActivityKey,
 } from '../../src/lib/calc'
 import { MET_BY_KEY } from '../../src/lib/mets'
+import { parseEstimateText } from '../../src/lib/estimate'
 
 type Bindings = {
   DB: D1Database
@@ -503,6 +504,107 @@ app.delete('/exercise/:id', requireAuth, async (c) => {
     .run()
   if ((r.meta.changes ?? 0) === 0) return c.json({ error: 'not found' }, 404)
   return c.json({ ok: true })
+})
+
+// ---------- photo upload (R2) ----------
+
+const MAX_PHOTO_BYTES = 6 * 1024 * 1024
+
+app.post('/photo/upload', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const form = await c.req.formData().catch(() => null)
+  const entry = form?.get('file') as unknown
+  if (!entry || typeof entry === 'string') return c.json({ error: 'file is required' }, 400)
+  const file = entry as File
+  const type = file.type || 'image/jpeg'
+  if (!type.startsWith('image/')) return c.json({ error: 'file must be an image' }, 400)
+  if (file.size > MAX_PHOTO_BYTES) return c.json({ error: 'image too large (max 6 MB)' }, 413)
+  // Namespace by user so one user cannot reference another user's photo on estimate.
+  const key = `${uid}/${crypto.randomUUID()}`
+  await c.env.BUCKET.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: type } })
+  return c.json({ photo_key: key }, 201)
+})
+
+// ---------- AI estimate (Anthropic vision, server-side only) ----------
+
+const FOOD_SYSTEM_PROMPT = `You are a nutrition estimation assistant. You receive one photo of food, optionally with the restaurant name and a description, and return a calorie and macronutrient estimate.
+
+Rules:
+- Identify each distinct food item visible.
+- If a restaurant is named and you recognize it or the dish as a known menu item with published nutrition, anchor your estimate to those published values and say so in notes. Otherwise estimate from the image.
+- Use the description to resolve ambiguity (hidden ingredients, preparation, what is under the surface).
+- Estimate portions using visible references for scale (plate, utensils, hands). State portions in plain units.
+- Give per-item calories, protein, carbs, and fat in grams.
+- Be realistic, not optimistic. Restaurant portions are usually larger and higher in oil and butter than they look.
+- Set confidence to "low" when portion or identity is genuinely uncertain. Naming the restaurant and dish should raise confidence.
+- Do not write any prose outside the JSON. Do not use markdown code fences.
+
+Return ONLY a JSON object with this exact shape:
+{
+  "items": [
+    {"name": string, "portion": string, "calories": number, "protein_g": number, "carbs_g": number, "fat_g": number}
+  ],
+  "total": {"calories": number, "protein_g": number, "carbs_g": number, "fat_g": number},
+  "confidence": "low" | "medium" | "high",
+  "notes": string
+}`
+
+app.post('/estimate', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const body = await c.req.json().catch(() => null)
+  const photoKey = body?.photo_key
+  const restaurant = typeof body?.restaurant === 'string' ? body.restaurant.trim() : ''
+  const description = typeof body?.description === 'string' ? body.description.trim() : ''
+  if (typeof photoKey !== 'string' || !photoKey) return c.json({ error: 'photo_key required' }, 400)
+  if (!photoKey.startsWith(`${uid}/`)) return c.json({ error: 'photo not found' }, 404)
+  if (!c.env.ANTHROPIC_API_KEY) return c.json({ error: 'AI is not configured on this server' }, 503)
+
+  const obj = await c.env.BUCKET.get(photoKey)
+  if (!obj) return c.json({ error: 'photo not found' }, 404)
+  const b64 = bytesToBase64(new Uint8Array(await obj.arrayBuffer()))
+  const mediaType = obj.httpMetadata?.contentType ?? 'image/jpeg'
+
+  const ctx: string[] = []
+  if (restaurant) ctx.push(`Restaurant: ${restaurant}.`)
+  if (description) ctx.push(`User description: ${description}.`)
+  const userText = (ctx.join(' ') + ' Estimate the calories and macros for this meal.').trim()
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': c.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: FOOD_SYSTEM_PROMPT,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: b64 } },
+            { type: 'text', text: userText },
+          ],
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    return c.json({ error: 'model call failed', status: res.status, detail: detail.slice(0, 300) }, 502)
+  }
+
+  const data = await res.json<{ content?: Array<{ type: string; text?: string }> }>()
+  const text = (data.content ?? [])
+    .filter((b) => b.type === 'text')
+    .map((b) => b.text ?? '')
+    .join('')
+  const parsed = parseEstimateText(text)
+  if (!parsed) return c.json({ error: 'could not parse estimate', raw: text.slice(0, 500) }, 422)
+  return c.json(parsed)
 })
 
 export const onRequest = handle(app)
