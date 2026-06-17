@@ -8,7 +8,6 @@ export type Me = {
   email: string
   sex: 'male' | 'female' | null
   height_cm: number | null
-  birthdate: string | null
   activity: string
   goal_weight_kg: number | null
   goal_rate_kg_per_week: number | null

@@ -4,7 +4,6 @@ import { getCookie, setCookie, deleteCookie } from 'hono/cookie'
 import type { Context, MiddlewareHandler } from 'hono'
 import {
   ACTIVITY,
-  ageOn,
   bmr,
   dailyTarget,
   exerciseKcal,
@@ -127,7 +126,7 @@ type UserRow = {
   email: string
   sex: 'male' | 'female' | null
   height_cm: number | null
-  birthdate: string | null
+  age: number | null
   activity: string
   goal_weight_kg: number | null
   goal_rate_kg_per_week: number | null
@@ -138,7 +137,7 @@ type UserRow = {
 
 function loadUser(c: AppContext, uid: string): Promise<UserRow | null> {
   return c.env.DB.prepare(
-    `SELECT id, email, sex, height_cm, birthdate, activity, goal_weight_kg,
+    `SELECT id, email, sex, height_cm, age, activity, goal_weight_kg,
             goal_rate_kg_per_week, exercise_credit_pct, units, created_at
      FROM users WHERE id = ?`,
   )
@@ -160,23 +159,21 @@ function computeTarget(u: UserRow, weightKg: number | null) {
   const profileComplete =
     !!u.sex &&
     u.height_cm != null &&
-    !!u.birthdate &&
+    u.age != null &&
     u.activity in ACTIVITY &&
     u.goal_rate_kg_per_week != null
   const setupComplete = profileComplete && weightKg != null
-  let age: number | null = null
   let tdeeVal: number | null = null
   let target: number | null = null
   if (setupComplete) {
-    age = ageOn(u.birthdate as string, new Date())
     const tdeeExact = tdee(
-      bmr(u.sex as 'male' | 'female', weightKg as number, u.height_cm as number, age),
+      bmr(u.sex as 'male' | 'female', weightKg as number, u.height_cm as number, u.age as number),
       u.activity as ActivityKey,
     )
     tdeeVal = Math.round(tdeeExact)
     target = dailyTarget(tdeeExact, u.goal_rate_kg_per_week as number, u.sex as 'male' | 'female')
   }
-  return { age, tdee: tdeeVal, target, setupComplete }
+  return { tdee: tdeeVal, target, setupComplete }
 }
 
 // ---------- auth ----------
@@ -235,7 +232,6 @@ app.get('/me', requireAuth, async (c) => {
   return c.json({
     ...u,
     latest_weight_kg: lw,
-    age: comp.age,
     setup_complete: comp.setupComplete,
     tdee: comp.tdee,
     daily_target: comp.target,
@@ -257,10 +253,10 @@ app.patch('/me', requireAuth, async (c) => {
     if (!(h > 0 && h < 300)) return c.json({ error: 'height_cm out of range' }, 400)
     sets.push('height_cm = ?'), vals.push(h)
   }
-  if (body.birthdate !== undefined) {
-    if (typeof body.birthdate !== 'string' || !DATE_RE.test(body.birthdate))
-      return c.json({ error: 'birthdate must be YYYY-MM-DD' }, 400)
-    sets.push('birthdate = ?'), vals.push(body.birthdate)
+  if (body.age !== undefined) {
+    const a = Math.round(Number(body.age))
+    if (!(a >= 1 && a <= 120)) return c.json({ error: 'age must be between 1 and 120' }, 400)
+    sets.push('age = ?'), vals.push(a)
   }
   if (body.activity !== undefined) {
     if (typeof body.activity !== 'string' || !(body.activity in ACTIVITY))

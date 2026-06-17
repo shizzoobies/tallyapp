@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
   pw_salt       TEXT NOT NULL,
   sex           TEXT CHECK (sex IN ('male','female')),
   height_cm     REAL,
-  birthdate     TEXT,
+  age           INTEGER,
   activity      TEXT DEFAULT 'sedentary',
   goal_weight_kg REAL,
   goal_rate_kg_per_week REAL DEFAULT -0.5,

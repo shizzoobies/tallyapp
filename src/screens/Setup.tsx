@@ -24,7 +24,7 @@ const RATE_OPTIONS = [
 export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
   const [units, setUnits] = useState<Units>(me.units ?? 'imperial')
   const [sex, setSex] = useState<'male' | 'female' | ''>(me.sex ?? '')
-  const [birthdate, setBirthdate] = useState(me.birthdate ?? '')
+  const [age, setAge] = useState(me.age != null ? String(me.age) : '')
 
   const init = me.height_cm != null ? cmToFtIn(me.height_cm) : { ft: 5, inch: 8 }
   const [ft, setFt] = useState(String(init.ft))
@@ -74,7 +74,8 @@ export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
     e.preventDefault()
     setError('')
     if (!sex) return setError('Please select your sex.')
-    if (!birthdate) return setError('Please enter your birthdate.')
+    const ageNum = Math.round(Number(age))
+    if (!(ageNum >= 1 && ageNum <= 120)) return setError('Please enter a valid age.')
     const heightCm = units === 'imperial' ? ftInToCm(Number(ft), Number(inch)) : Number(cm)
     if (!(heightCm > 0 && heightCm < 300)) return setError('Please enter a valid height.')
     const weightKg = units === 'imperial' ? lbToKg(Number(weight)) : Number(weight)
@@ -90,7 +91,7 @@ export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
     try {
       const fields: Record<string, unknown> = {
         sex,
-        birthdate,
+        age: ageNum,
         height_cm: round1(heightCm),
         activity,
         goal_rate_kg_per_week: Number(rate),
@@ -143,8 +144,8 @@ export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
             <option value="female">Female</option>
           </select>
 
-          <label htmlFor="birthdate">Birthdate</label>
-          <input id="birthdate" type="date" value={birthdate} onChange={(e) => setBirthdate(e.target.value)} />
+          <label htmlFor="age">Age</label>
+          <input id="age" type="number" inputMode="numeric" value={age} onChange={(e) => setAge(e.target.value)} placeholder="years" />
 
           <label>Height</label>
           {units === 'imperial' ? (
