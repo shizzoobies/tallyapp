@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#2563eb"/>
-  <g stroke="#ffffff" stroke-width="26" stroke-linecap="round">
-    <line x1="196" y1="184" x2="196" y2="328"/>
-    <line x1="236" y1="184" x2="236" y2="328"/>
-    <line x1="276" y1="184" x2="276" y2="328"/>
-    <line x1="316" y1="184" x2="316" y2="328"/>
-    <line x1="176" y1="328" x2="336" y2="184"/>
+  <rect width="512" height="512" rx="112" fill="#2d2d2a"/>
+  <g stroke-linecap="round">
+    <g stroke="#f9f7f2" stroke-width="26">
+      <line x1="196" y1="184" x2="196" y2="328"/>
+      <line x1="236" y1="184" x2="236" y2="328"/>
+      <line x1="276" y1="184" x2="276" y2="328"/>
+      <line x1="316" y1="184" x2="316" y2="328"/>
+    </g>
+    <line x1="176" y1="328" x2="336" y2="184" stroke="#7d8c7b" stroke-width="30"/>
   </g>
 </svg>

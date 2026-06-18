@@ -26,7 +26,8 @@ export default function Auth({ onAuthed }: { onAuthed: () => void }) {
   return (
     <div className="wrap">
       <div className="card">
-        <h1>Tally</h1>
+        <h1>MBS Tally</h1>
+        <p className="brandline">Mind Body &amp; Spirit Medicine</p>
         <p className="muted">{mode === 'register' ? 'Create your account' : 'Welcome back'}</p>
         <form onSubmit={submit}>
           <label htmlFor="email">Email</label>

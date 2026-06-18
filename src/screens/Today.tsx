@@ -194,6 +194,9 @@ export default function Today({
           Log out
         </button>
       </div>
+      <p className="muted center" style={{ marginTop: 10, fontSize: '0.76rem' }}>
+        Mind Body &amp; Spirit Medicine
+      </p>
 
       {sheet === 'snap' && <SnapMeal date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
       {sheet === 'scan' && <ScanFood date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}

@@ -13,12 +13,12 @@ export default defineConfig({
       injectRegister: 'auto',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Tally',
-        short_name: 'Tally',
+        name: 'MBS Tally',
+        short_name: 'MBS Tally',
         description:
-          'Scan or snap your food, log it against a daily calorie budget, and track a smoothed weight trend.',
-        theme_color: '#2563eb',
-        background_color: '#f3f4f6',
+          'MBS Tally by Mind Body & Spirit Medicine. Scan or snap your food, log it against a daily calorie budget, and track a smoothed weight trend.',
+        theme_color: '#2d2d2a',
+        background_color: '#f9f7f2',
         display: 'standalone',
         orientation: 'portrait',
         start_url: '/',

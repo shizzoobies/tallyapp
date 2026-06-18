@@ -16,13 +16,13 @@ export default function CalorieRing({
 
   return (
     <svg viewBox="0 0 200 200" className="ring" role="img" aria-label={`${remaining} calories remaining`}>
-      <circle cx="100" cy="100" r={R} fill="none" stroke="#eceef1" strokeWidth="16" />
+      <circle cx="100" cy="100" r={R} fill="none" stroke="#ece8e0" strokeWidth="16" />
       <circle
         cx="100"
         cy="100"
         r={R}
         fill="none"
-        stroke={over ? '#dc2626' : '#2563eb'}
+        stroke={over ? '#b3473f' : '#7d8c7b'}
         strokeWidth="16"
         strokeLinecap="round"
         strokeDasharray={`${dash} ${CIRC}`}

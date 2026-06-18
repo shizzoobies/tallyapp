@@ -55,8 +55,8 @@ export default function InstallPrompt() {
     <div className="install-banner">
       <span className="install-text">
         {deferred
-          ? 'Install Tally for one-tap access and offline open.'
-          : 'Install Tally: tap the Share button, then Add to Home Screen.'}
+          ? 'Install MBS Tally for one-tap access and offline open.'
+          : 'Install MBS Tally: tap the Share button, then Add to Home Screen.'}
       </span>
       <span className="install-actions">
         {deferred && (

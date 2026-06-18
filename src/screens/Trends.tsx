@@ -93,13 +93,13 @@ export default function Trends({ me, onBack }: { me: Me; onBack: () => void }) {
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={weightData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke="#eee" vertical={false} />
+              <CartesianGrid stroke="#ece8e0" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={20} />
               <YAxis tick={{ fontSize: 11 }} domain={['auto', 'auto']} />
               <Tooltip />
-              {goalDisp != null && <ReferenceLine y={goalDisp} stroke="#16a34a" strokeDasharray="4 4" />}
-              <Line type="monotone" dataKey="weight" stroke="#cbd5e1" strokeWidth={1} dot={{ r: 2 }} isAnimationActive={false} name="daily" />
-              <Line type="monotone" dataKey="trend" stroke="#2563eb" strokeWidth={2.5} dot={false} isAnimationActive={false} name="trend" />
+              {goalDisp != null && <ReferenceLine y={goalDisp} stroke="#7d8c7b" strokeDasharray="4 4" />}
+              <Line type="monotone" dataKey="weight" stroke="#cfc8bd" strokeWidth={1} dot={{ r: 2 }} isAnimationActive={false} name="daily" />
+              <Line type="monotone" dataKey="trend" stroke="#566b52" strokeWidth={2.5} dot={false} isAnimationActive={false} name="trend" />
             </ComposedChart>
           </ResponsiveContainer>
         )}
@@ -130,12 +130,12 @@ export default function Trends({ me, onBack }: { me: Me; onBack: () => void }) {
         ) : (
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={calData} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-              <CartesianGrid stroke="#eee" vertical={false} />
+              <CartesianGrid stroke="#ece8e0" vertical={false} />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} minTickGap={20} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
-              {me.daily_target != null && <ReferenceLine y={me.daily_target} stroke="#dc2626" strokeDasharray="4 4" />}
-              <Bar dataKey="consumed" fill="#2563eb" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+              {me.daily_target != null && <ReferenceLine y={me.daily_target} stroke="#b3473f" strokeDasharray="4 4" />}
+              <Bar dataKey="consumed" fill="#7d8c7b" radius={[3, 3, 0, 0]} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         )}
