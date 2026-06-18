@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Privacy Policy - MBS Tally</title>
+    <meta
+      name="description"
+      content="Privacy policy for MBS Tally, the calorie and weight tracker from Mind Body & Spirit Medicine."
+    />
+    <meta name="theme-color" content="#2d2d2a" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #f9f7f2;
+        --ink: #3c3836;
+        --muted: #8a847d;
+        --accent: #2d2d2a;
+        --sage-deep: #566b52;
+        --line: #ece8e0;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; }
+      body {
+        font-family: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+      }
+      .wrap {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 28px 20px 64px;
+        padding-top: max(28px, env(safe-area-inset-top));
+      }
+      .brandline {
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--sage-deep);
+        margin: 0 0 6px;
+      }
+      h1 {
+        font-family: "Lora", Georgia, serif;
+        font-size: 1.8rem;
+        margin: 0 0 4px;
+      }
+      h2 {
+        font-family: "Lora", Georgia, serif;
+        font-size: 1.15rem;
+        margin: 30px 0 6px;
+      }
+      p, li { color: var(--ink); }
+      .updated { color: var(--muted); font-size: 0.85rem; margin: 0 0 8px; }
+      ul { padding-left: 20px; }
+      li { margin: 4px 0; }
+      a { color: var(--sage-deep); font-weight: 600; }
+      .card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px 24px 8px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+        margin-top: 16px;
+      }
+      .back { display: inline-block; margin-bottom: 4px; font-size: 0.9rem; }
+      footer {
+        margin-top: 28px;
+        color: var(--muted);
+        font-size: 0.8rem;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <a class="back" href="/">&lt; Back to MBS Tally</a>
+      <p class="brandline">Mind Body &amp; Spirit Medicine</p>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated: June 17, 2026</p>
+
+      <div class="card">
+        <p>
+          MBS Tally is a calorie and weight tracker offered by Mind Body &amp; Spirit
+          Medicine (MBS Medical), a veteran owned telehealth practice in Florida. This
+          policy explains what information the app collects, how it is used, and the
+          choices you have. By creating an account and using MBS Tally, you agree to the
+          practices described here.
+        </p>
+
+        <h2>Information we collect</h2>
+        <p>We only collect what you give us to make the app work:</p>
+        <ul>
+          <li>
+            <strong>Account details.</strong> Your email address and a password. Your
+            password is never stored in plain text. We keep only a salted PBKDF2 hash of
+            it, which cannot be reversed back into your password.
+          </li>
+          <li>
+            <strong>Profile and goals.</strong> Sex, age, height, current and goal weight,
+            target weekly pace, activity level, your preferred units, and whether to credit
+            exercise back to your daily budget. These let the app compute your calorie
+            target.
+          </li>
+          <li>
+            <strong>Food and activity logs.</strong> The foods you log (name, calories,
+            macronutrients, meal, and where relevant a restaurant name or product barcode),
+            the meal photos you choose to capture, and the exercise entries you add.
+          </li>
+          <li>
+            <strong>Weight history.</strong> The weights you log over time, which the app
+            smooths into a trend.
+          </li>
+          <li>
+            <strong>Sign in token.</strong> A session cookie or token so you stay signed in.
+            We do not use advertising trackers or third party analytics.
+          </li>
+        </ul>
+
+        <h2>How we use your information</h2>
+        <ul>
+          <li>To calculate your daily calorie target and remaining budget.</li>
+          <li>To show your daily log and a smoothed weight trend over time.</li>
+          <li>To estimate calories and macros from a meal photo when you ask for it.</li>
+          <li>To look up product nutrition when you scan a barcode.</li>
+          <li>To keep your account secure and signed in.</li>
+        </ul>
+        <p>
+          We do not sell your information, and we do not share it for advertising. We only
+          share data with the service providers below, and only as needed to provide the
+          features you use.
+        </p>
+
+        <h2>Meal photos and AI estimation</h2>
+        <p>
+          When you photograph a meal, the image and any description you add are sent to
+          Anthropic's Claude API to produce a calorie and macro estimate. The estimate is
+          an editable draft that you confirm before it is saved. Photos are stored in your
+          private, per account space and are removed when you delete the entry or your
+          account. Barcode photos are never sent to the AI. Barcodes are read on your
+          device.
+        </p>
+
+        <h2>Barcode lookups</h2>
+        <p>
+          When you scan or enter a barcode, the numeric code is sent to Open Food Facts, an
+          open product database, to retrieve nutrition information. No photo and no personal
+          information are sent with the lookup.
+        </p>
+
+        <h2>Where your data is stored</h2>
+        <p>
+          MBS Tally runs on Cloudflare. Your account and logs are stored in a Cloudflare D1
+          database and your meal photos in Cloudflare R2 storage. Data is encrypted in
+          transit using HTTPS. Our service providers are:
+        </p>
+        <ul>
+          <li><strong>Cloudflare</strong> for hosting, database, and photo storage.</li>
+          <li><strong>Anthropic</strong> for meal photo calorie estimates.</li>
+          <li><strong>Open Food Facts</strong> for barcode product lookups.</li>
+        </ul>
+
+        <h2>Health information</h2>
+        <p>
+          Your weight, calories, and activity are health related, and we treat them as
+          sensitive. They are used only to provide the tracking features in the app. We do
+          not sell this data or use it for advertising. MBS Tally does not currently connect
+          to Apple Health or Google Health Connect. If we add that ability, we will update
+          this policy first and clearly describe what is read and how it is used. Data read
+          from a health platform will be used only to populate your own logs and will not be
+          shared for advertising.
+        </p>
+
+        <h2>How long we keep your data, and deletion</h2>
+        <p>
+          We keep your information for as long as your account exists. You can delete your
+          account at any time from inside the app, in Profile, under Account. Deleting your
+          account permanently removes your profile, food and exercise logs, weight history,
+          sign in sessions, and meal photos. This cannot be undone.
+        </p>
+
+        <h2>Security</h2>
+        <p>
+          Passwords are hashed with salted PBKDF2 and never stored in plain text. Sessions
+          use an HttpOnly cookie on the web. All traffic is served over HTTPS. No method of
+          storage or transmission is perfectly secure, but we take reasonable steps to
+          protect your information.
+        </p>
+
+        <h2>Children's privacy</h2>
+        <p>
+          MBS Tally is not directed to children under 13, and we do not knowingly collect
+          information from them. If you believe a child has provided us information, please
+          contact us and we will remove it.
+        </p>
+
+        <h2>Your choices</h2>
+        <ul>
+          <li>View and update your profile details at any time in the app.</li>
+          <li>Delete individual food, exercise, and weight entries.</li>
+          <li>Delete your entire account and its data from Profile, under Account.</li>
+        </ul>
+
+        <h2>Changes to this policy</h2>
+        <p>
+          We may update this policy as the app changes. When we do, we will revise the date
+          at the top of this page.
+        </p>
+
+        <h2>Contact</h2>
+        <p>
+          If you have questions about this policy or your data, you can reach us through
+          <a href="https://ka-performancefl.com/" target="_blank" rel="noopener noreferrer">ka-performancefl.com</a>.
+        </p>
+      </div>
+
+      <footer>MBS Tally by Mind Body &amp; Spirit Medicine</footer>
+    </div>
+  </body>
+</html>

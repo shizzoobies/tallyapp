@@ -31,7 +31,9 @@ export default defineConfig({
       },
       workbox: {
         navigateFallback: '/index.html',
-        navigateFallbackDenylist: [/^\/api\//],
+        // /api is the server; /privacy is a standalone static page. Neither should be
+        // shadowed by the SPA shell, so keep both off the navigation fallback.
+        navigateFallbackDenylist: [/^\/api\//, /^\/privacy(\.html)?$/],
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
         cleanupOutdatedCaches: true,
       },

@@ -97,6 +97,8 @@ export const api = {
   logout: () => fetch('/api/auth/logout', { method: 'POST' }).then(jsonOrThrow),
   patchMe: (fields: Record<string, unknown>) =>
     fetch('/api/me', { method: 'PATCH', headers: jsonHeaders, body: JSON.stringify(fields) }).then(jsonOrThrow),
+  deleteAccount: (password: string) =>
+    fetch('/api/me', { method: 'DELETE', headers: jsonHeaders, body: JSON.stringify({ password }) }).then(jsonOrThrow),
 
   postWeight: (date: string, weight_kg: number) => postJson('/api/weight', { date, weight_kg }),
 

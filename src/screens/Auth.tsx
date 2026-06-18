@@ -66,6 +66,11 @@ export default function Auth({ onAuthed }: { onAuthed: () => void }) {
             {mode === 'register' ? 'Log in' : 'Create account'}
           </button>
         </p>
+        <p className="muted center" style={{ marginTop: 12, fontSize: '0.76rem' }}>
+          <a className="exlink" href="/privacy" target="_blank" rel="noopener noreferrer">
+            Privacy policy
+          </a>
+        </p>
       </div>
     </div>
   )

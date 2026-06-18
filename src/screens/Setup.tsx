@@ -48,6 +48,11 @@ export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [delPw, setDelPw] = useState('')
+  const [delError, setDelError] = useState('')
+  const [delBusy, setDelBusy] = useState(false)
+
   // Switch units and convert any values already entered so they stay the same
   // physical measurement.
   function switchUnits(next: Units) {
@@ -106,6 +111,19 @@ export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
       setError((err as Error).message)
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function deleteAccount() {
+    setDelError('')
+    if (!delPw) return setDelError('Enter your password to confirm.')
+    setDelBusy(true)
+    try {
+      await api.deleteAccount(delPw)
+      onDone() // the session is gone now, so App reloads to the auth screen
+    } catch (err) {
+      setDelError((err as Error).message)
+      setDelBusy(false)
     }
   }
 
@@ -197,6 +215,64 @@ export default function Setup({ me, onDone }: { me: Me; onDone: () => void }) {
             {busy ? 'Saving...' : 'Save and continue'}
           </button>
         </form>
+      </div>
+
+      <div className="card">
+        <h2 className="section">Account</h2>
+        <p className="help">
+          Deleting your account permanently removes your profile, food and exercise logs,
+          weight history, and meal photos. This cannot be undone.
+        </p>
+        {!confirmDelete ? (
+          <button
+            type="button"
+            className="secondary"
+            style={{ marginTop: 14 }}
+            onClick={() => setConfirmDelete(true)}
+          >
+            Delete account
+          </button>
+        ) : (
+          <>
+            <label htmlFor="delpw">Enter your password to confirm</label>
+            <input
+              id="delpw"
+              type="password"
+              value={delPw}
+              onChange={(e) => setDelPw(e.target.value)}
+              autoComplete="current-password"
+            />
+            {delError && <div className="error">{delError}</div>}
+            <div className="row" style={{ marginTop: 14 }}>
+              <button
+                type="button"
+                className="secondary"
+                style={{ marginTop: 0 }}
+                onClick={() => {
+                  setConfirmDelete(false)
+                  setDelPw('')
+                  setDelError('')
+                }}
+                disabled={delBusy}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                style={{ marginTop: 0, background: 'var(--danger)' }}
+                onClick={deleteAccount}
+                disabled={delBusy}
+              >
+                {delBusy ? 'Deleting...' : 'Permanently delete'}
+              </button>
+            </div>
+          </>
+        )}
+        <p className="help" style={{ marginTop: 16 }}>
+          <a className="exlink" href="/privacy" target="_blank" rel="noopener noreferrer">
+            Privacy policy
+          </a>
+        </p>
       </div>
     </div>
   )

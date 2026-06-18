@@ -145,3 +145,5 @@ button.link {
 .install-btn { width: auto; margin: 0; padding: 8px 14px; }
 .install-banner .link { color: #b9c4b3; }
 .brandline { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sage-deep); margin: 0 0 2px; }
+.exlink { color: var(--sage-deep); font-weight: 600; text-decoration: none; }
+.exlink:hover { text-decoration: underline; }

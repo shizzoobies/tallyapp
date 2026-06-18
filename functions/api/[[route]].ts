@@ -89,7 +89,10 @@ function nonNegNum(x: unknown): number {
   return Number.isFinite(n) && n >= 0 ? n : 0
 }
 
-async function createSession(c: AppContext, userId: string): Promise<void> {
+// Returns the session token. The web client ignores it and relies on the HttpOnly
+// cookie; a native client opts in (see wantsToken) and stores the token on device,
+// because the cookie does not cross the native WebView origin to the API.
+async function createSession(c: AppContext, userId: string): Promise<string> {
   const token = randomToken()
   const expires = new Date(Date.now() + SESSION_DAYS * 86_400_000).toISOString()
   await c.env.DB.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)')
@@ -102,10 +105,41 @@ async function createSession(c: AppContext, userId: string): Promise<void> {
     path: '/',
     maxAge: SESSION_DAYS * 86_400,
   })
+  return token
+}
+
+// A session token comes from either the Authorization: Bearer header (native) or
+// the session cookie (web). Bearer wins when both are present.
+function resolveToken(c: AppContext): string | undefined {
+  const auth = c.req.header('Authorization')
+  if (auth && auth.startsWith('Bearer ')) {
+    const t = auth.slice(7).trim()
+    if (t) return t
+  }
+  return getCookie(c, SESSION_COOKIE)
+}
+
+// Native clients send this header to receive the token in the login/register body.
+// Web clients omit it, so the token stays out of any JS-readable response and the
+// HttpOnly cookie remains the only place it lives on the web.
+function wantsToken(c: AppContext): boolean {
+  return c.req.header('X-Tally-Native') === '1'
+}
+
+// Delete every R2 object namespaced under the user, paging through the listing.
+async function deleteUserPhotos(c: AppContext, uid: string): Promise<void> {
+  let cursor: string | undefined
+  do {
+    const listed = await c.env.BUCKET.list({ prefix: `${uid}/`, cursor })
+    if (listed.objects.length > 0) {
+      await c.env.BUCKET.delete(listed.objects.map((o) => o.key))
+    }
+    cursor = listed.truncated ? listed.cursor : undefined
+  } while (cursor)
 }
 
 const requireAuth: MiddlewareHandler<Env> = async (c, next) => {
-  const token = getCookie(c, SESSION_COOKIE)
+  const token = resolveToken(c)
   if (!token) return c.json({ error: 'unauthenticated' }, 401)
   const s = await c.env.DB.prepare('SELECT user_id, expires_at FROM sessions WHERE token = ?')
     .bind(token)
@@ -194,8 +228,8 @@ app.post('/auth/register', async (c) => {
   await c.env.DB.prepare('INSERT INTO users (id, email, pw_hash, pw_salt) VALUES (?, ?, ?, ?)')
     .bind(id, email, hash, bytesToBase64(salt))
     .run()
-  await createSession(c, id)
-  return c.json({ id, email }, 201)
+  const token = await createSession(c, id)
+  return c.json(wantsToken(c) ? { id, email, token } : { id, email }, 201)
 })
 
 app.post('/auth/login', async (c) => {
@@ -210,12 +244,12 @@ app.post('/auth/login', async (c) => {
   const salt = u ? base64ToBytes(u.pw_salt) : new Uint8Array(16)
   const hash = await pbkdf2(password, salt)
   if (!u || !timingSafeEqual(hash, u.pw_hash)) return c.json({ error: 'Invalid email or password.' }, 401)
-  await createSession(c, u.id)
-  return c.json({ id: u.id, email })
+  const token = await createSession(c, u.id)
+  return c.json(wantsToken(c) ? { id: u.id, email, token } : { id: u.id, email })
 })
 
 app.post('/auth/logout', async (c) => {
-  const token = getCookie(c, SESSION_COOKIE)
+  const token = resolveToken(c)
   if (token) await c.env.DB.prepare('DELETE FROM sessions WHERE token = ?').bind(token).run()
   deleteCookie(c, SESSION_COOKIE, { path: '/' })
   return c.json({ ok: true })
@@ -287,6 +321,41 @@ app.patch('/me', requireAuth, async (c) => {
   if (sets.length === 0) return c.json({ error: 'no valid fields to update' }, 400)
   vals.push(uid)
   await c.env.DB.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run()
+  return c.json({ ok: true })
+})
+
+// Full account deletion. Apple and Google require an in-app path to delete the
+// account and its data. We require the current password, then remove the user's
+// meal photos (R2) and every row keyed to the user, and clear the session cookie.
+app.delete('/me', requireAuth, async (c) => {
+  const uid = c.get('userId')
+  const body = await c.req.json().catch(() => null)
+  const password = typeof body?.password === 'string' ? body.password : ''
+  const u = await c.env.DB.prepare('SELECT pw_hash, pw_salt FROM users WHERE id = ?')
+    .bind(uid)
+    .first<{ pw_hash: string; pw_salt: string }>()
+  if (!u) return c.json({ error: 'unauthenticated' }, 401)
+  const hash = await pbkdf2(password, base64ToBytes(u.pw_salt))
+  if (!timingSafeEqual(hash, u.pw_hash)) return c.json({ error: 'Incorrect password.' }, 401)
+
+  // Best effort: purge the user's meal photos. Anything that survives a transient R2
+  // error is now unreferenced and gets swept by the bucket lifecycle rule.
+  try {
+    await deleteUserPhotos(c, uid)
+  } catch {
+    // proceed; the authoritative row deletion below still runs
+  }
+
+  // Authoritative removal. Children first so the users row deletes cleanly even with
+  // foreign keys enforced, all in one batch so it is all or nothing.
+  await c.env.DB.batch([
+    c.env.DB.prepare('DELETE FROM food_logs WHERE user_id = ?').bind(uid),
+    c.env.DB.prepare('DELETE FROM exercise_logs WHERE user_id = ?').bind(uid),
+    c.env.DB.prepare('DELETE FROM weight_logs WHERE user_id = ?').bind(uid),
+    c.env.DB.prepare('DELETE FROM sessions WHERE user_id = ?').bind(uid),
+    c.env.DB.prepare('DELETE FROM users WHERE id = ?').bind(uid),
+  ])
+  deleteCookie(c, SESSION_COOKIE, { path: '/' })
   return c.json({ ok: true })
 })
 

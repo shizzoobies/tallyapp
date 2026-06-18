@@ -196,6 +196,10 @@ export default function Today({
       </div>
       <p className="muted center" style={{ marginTop: 10, fontSize: '0.76rem' }}>
         Mind Body &amp; Spirit Medicine
+        {' · '}
+        <a className="exlink" href="/privacy" target="_blank" rel="noopener noreferrer">
+          Privacy
+        </a>
       </p>
 
       {sheet === 'snap' && <SnapMeal date={date} onSaved={afterFoodOrExercise} onClose={() => setSheet(null)} />}
